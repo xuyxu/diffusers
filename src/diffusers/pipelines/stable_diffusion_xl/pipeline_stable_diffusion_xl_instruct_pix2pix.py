@@ -24,6 +24,7 @@ from ...loaders import FromSingleFileMixin, StableDiffusionXLLoraLoaderMixin, Te
 from ...models import AutoencoderKL, UNet2DConditionModel
 from ...models.attention_processor import (
     AttnProcessor2_0,
+    FusedAttnProcessor2_0,
     LoRAAttnProcessor2_0,
     LoRAXFormersAttnProcessor,
     XFormersAttnProcessor,
@@ -86,6 +87,20 @@ EXAMPLE_DOC_STRING = """
         >>> edited_image
         ```
 """
+
+
+# Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_img2img.retrieve_latents
+def retrieve_latents(
+    encoder_output: torch.Tensor, generator: Optional[torch.Generator] = None, sample_mode: str = "sample"
+):
+    if hasattr(encoder_output, "latent_dist") and sample_mode == "sample":
+        return encoder_output.latent_dist.sample(generator)
+    elif hasattr(encoder_output, "latent_dist") and sample_mode == "argmax":
+        return encoder_output.latent_dist.mode()
+    elif hasattr(encoder_output, "latents"):
+        return encoder_output.latents
+    else:
+        raise AttributeError("Could not access latents of provided encoder_output")
 
 
 def rescale_noise_cfg(noise_cfg, noise_pred_text, guidance_rescale=0.0):
@@ -151,6 +166,7 @@ class StableDiffusionXLInstructPix2PixPipeline(
             watermark output images. If not defined, it will default to True if the package is installed, otherwise no
             watermarker will be used.
     """
+
     model_cpu_offload_seq = "text_encoder->text_encoder_2->unet->vae"
     _optional_components = ["tokenizer", "tokenizer_2", "text_encoder", "text_encoder_2"]
 
@@ -446,14 +462,25 @@ class StableDiffusionXLInstructPix2PixPipeline(
 
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_instruct_pix2pix.StableDiffusionInstructPix2PixPipeline.check_inputs
     def check_inputs(
-        self, prompt, callback_steps, negative_prompt=None, prompt_embeds=None, negative_prompt_embeds=None
+        self,
+        prompt,
+        callback_steps,
+        negative_prompt=None,
+        prompt_embeds=None,
+        negative_prompt_embeds=None,
+        callback_on_step_end_tensor_inputs=None,
     ):
-        if (callback_steps is None) or (
-            callback_steps is not None and (not isinstance(callback_steps, int) or callback_steps <= 0)
-        ):
+        if callback_steps is not None and (not isinstance(callback_steps, int) or callback_steps <= 0):
             raise ValueError(
                 f"`callback_steps` has to be a positive integer but is {callback_steps} of type"
                 f" {type(callback_steps)}."
+            )
+
+        if callback_on_step_end_tensor_inputs is not None and not all(
+            k in self._callback_tensor_inputs for k in callback_on_step_end_tensor_inputs
+        ):
+            raise ValueError(
+                f"`callback_on_step_end_tensor_inputs` has to be in {self._callback_tensor_inputs}, but found {[k for k in callback_on_step_end_tensor_inputs if k not in self._callback_tensor_inputs]}"
             )
 
         if prompt is not None and prompt_embeds is not None:
@@ -521,17 +548,7 @@ class StableDiffusionXLInstructPix2PixPipeline(
                 self.upcast_vae()
                 image = image.to(next(iter(self.vae.post_quant_conv.parameters())).dtype)
 
-            if isinstance(generator, list) and len(generator) != batch_size:
-                raise ValueError(
-                    f"You have passed a list of generators of length {len(generator)}, but requested an effective batch"
-                    f" size of {batch_size}. Make sure the batch size matches the length of the generators."
-                )
-
-            if isinstance(generator, list):
-                image_latents = [self.vae.encode(image[i : i + 1]).latent_dist.mode() for i in range(batch_size)]
-                image_latents = torch.cat(image_latents, dim=0)
-            else:
-                image_latents = self.vae.encode(image).latent_dist.mode()
+            image_latents = retrieve_latents(self.vae.encode(image), sample_mode="argmax")
 
             # cast back to fp16 if needed
             if needs_upcasting:
@@ -594,6 +611,7 @@ class StableDiffusionXLInstructPix2PixPipeline(
                 XFormersAttnProcessor,
                 LoRAXFormersAttnProcessor,
                 LoRAAttnProcessor2_0,
+                FusedAttnProcessor2_0,
             ),
         )
         # if xformers or torch_2_0 is used attention block does not need
@@ -854,7 +872,6 @@ class StableDiffusionXLInstructPix2PixPipeline(
             prompt_embeds.dtype,
             device,
             do_classifier_free_guidance,
-            generator,
         )
 
         # 7. Prepare latent variables

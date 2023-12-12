@@ -447,7 +447,8 @@ def convert_ldm_unet_checkpoint(
 
     # Relevant to StableDiffusionUpscalePipeline
     if "num_class_embeds" in config:
-        new_checkpoint["class_embedding.weight"] = unet_state_dict["label_emb.weight"]
+        if (config["num_class_embeds"] is not None) and ("label_emb.weight" in unet_state_dict):
+            new_checkpoint["class_embedding.weight"] = unet_state_dict["label_emb.weight"]
 
     new_checkpoint["conv_in.weight"] = unet_state_dict["input_blocks.0.0.weight"]
     new_checkpoint["conv_in.bias"] = unet_state_dict["input_blocks.0.0.bias"]
@@ -1145,6 +1146,7 @@ def download_from_original_stable_diffusion_ckpt(
     stable_unclip_prior: Optional[str] = None,
     clip_stats_path: Optional[str] = None,
     controlnet: Optional[bool] = None,
+    adapter: Optional[bool] = None,
     load_safety_checker: bool = True,
     pipeline_class: DiffusionPipeline = None,
     local_files_only=False,
@@ -1231,12 +1233,10 @@ def download_from_original_stable_diffusion_ckpt(
         StableDiffusionPipeline,
         StableDiffusionUpscalePipeline,
         StableDiffusionXLImg2ImgPipeline,
+        StableDiffusionXLPipeline,
         StableUnCLIPImg2ImgPipeline,
         StableUnCLIPPipeline,
     )
-
-    if pipeline_class is None:
-        pipeline_class = StableDiffusionPipeline if not controlnet else StableDiffusionControlNetPipeline
 
     if prediction_type == "v-prediction":
         prediction_type = "v_prediction"
@@ -1331,6 +1331,13 @@ def download_from_original_stable_diffusion_ckpt(
             model_type = "SDXL-Refiner"
         if image_size is None:
             image_size = 1024
+
+    if pipeline_class is None:
+        # Check if we have a SDXL or SD model and initialize default pipeline
+        if model_type not in ["SDXL", "SDXL-Refiner"]:
+            pipeline_class = StableDiffusionPipeline if not controlnet else StableDiffusionControlNetPipeline
+        else:
+            pipeline_class = StableDiffusionXLPipeline if model_type == "SDXL" else StableDiffusionXLImg2ImgPipeline
 
     if num_in_channels is None and pipeline_class == StableDiffusionInpaintPipeline:
         num_in_channels = 9
@@ -1474,9 +1481,12 @@ def download_from_original_stable_diffusion_ckpt(
         config_name = "stabilityai/stable-diffusion-2"
         config_kwargs = {"subfolder": "text_encoder"}
 
-        text_model = convert_open_clip_checkpoint(
-            checkpoint, config_name, local_files_only=local_files_only, **config_kwargs
-        )
+        if text_encoder is None:
+            text_model = convert_open_clip_checkpoint(
+                checkpoint, config_name, local_files_only=local_files_only, **config_kwargs
+            )
+        else:
+            text_model = text_encoder
 
         try:
             tokenizer = CLIPTokenizer.from_pretrained(
@@ -1720,6 +1730,18 @@ def download_from_original_stable_diffusion_ckpt(
                     tokenizer_2=tokenizer_2,
                     unet=unet,
                     controlnet=controlnet,
+                    scheduler=scheduler,
+                    force_zeros_for_empty_prompt=True,
+                )
+            elif adapter:
+                pipe = pipeline_class(
+                    vae=vae,
+                    text_encoder=text_encoder,
+                    tokenizer=tokenizer,
+                    text_encoder_2=text_encoder_2,
+                    tokenizer_2=tokenizer_2,
+                    unet=unet,
+                    adapter=adapter,
                     scheduler=scheduler,
                     force_zeros_for_empty_prompt=True,
                 )
