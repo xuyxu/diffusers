@@ -111,54 +111,54 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
             The number of transformer blocks of type [`~models.attention.BasicTransformerBlock`]. Only relevant for
             [`~models.unet_2d_blocks.CrossAttnDownBlock2D`], [`~models.unet_2d_blocks.CrossAttnUpBlock2D`],
             [`~models.unet_2d_blocks.UNetMidBlock2DCrossAttn`].
-       reverse_transformer_layers_per_block : (`Tuple[Tuple]`, *optional*, defaults to None):
+        reverse_transformer_layers_per_block : (`Tuple[Tuple]`, *optional*, defaults to None):
             The number of transformer blocks of type [`~models.attention.BasicTransformerBlock`], in the upsampling
             blocks of the U-Net. Only relevant if `transformer_layers_per_block` is of type `Tuple[Tuple]` and for
             [`~models.unet_2d_blocks.CrossAttnDownBlock2D`], [`~models.unet_2d_blocks.CrossAttnUpBlock2D`],
             [`~models.unet_2d_blocks.UNetMidBlock2DCrossAttn`].
-       encoder_hid_dim (`int`, *optional*, defaults to None):
+        encoder_hid_dim (`int`, *optional*, defaults to None):
             If `encoder_hid_dim_type` is defined, `encoder_hidden_states` will be projected from `encoder_hid_dim`
             dimension to `cross_attention_dim`.
-       encoder_hid_dim_type (`str`, *optional*, defaults to `None`):
+        encoder_hid_dim_type (`str`, *optional*, defaults to `None`):
             If given, the `encoder_hidden_states` and potentially other embeddings are down-projected to text
             embeddings of dimension `cross_attention` according to `encoder_hid_dim_type`.
-       attention_head_dim (`int`, *optional*, defaults to 8): The dimension of the attention heads.
-       num_attention_heads (`int`, *optional*):
+        attention_head_dim (`int`, *optional*, defaults to 8): The dimension of the attention heads.
+        num_attention_heads (`int`, *optional*):
             The number of attention heads. If not defined, defaults to `attention_head_dim`
-       resnet_time_scale_shift (`str`, *optional*, defaults to `"default"`): Time scale shift config
+        resnet_time_scale_shift (`str`, *optional*, defaults to `"default"`): Time scale shift config
             for ResNet blocks (see [`~models.resnet.ResnetBlock2D`]). Choose from `default` or `scale_shift`.
-       class_embed_type (`str`, *optional*, defaults to `None`):
+        class_embed_type (`str`, *optional*, defaults to `None`):
             The type of class embedding to use which is ultimately summed with the time embeddings. Choose from `None`,
             `"timestep"`, `"identity"`, `"projection"`, or `"simple_projection"`.
-       addition_embed_type (`str`, *optional*, defaults to `None`):
+        addition_embed_type (`str`, *optional*, defaults to `None`):
             Configures an optional embedding which will be summed with the time embeddings. Choose from `None` or
             "text". "text" will use the `TextTimeEmbedding` layer.
-       addition_time_embed_dim: (`int`, *optional*, defaults to `None`):
+        addition_time_embed_dim: (`int`, *optional*, defaults to `None`):
             Dimension for the timestep embeddings.
-       num_class_embeds (`int`, *optional*, defaults to `None`):
+        num_class_embeds (`int`, *optional*, defaults to `None`):
             Input dimension of the learnable embedding matrix to be projected to `time_embed_dim`, when performing
             class conditioning with `class_embed_type` equal to `None`.
-       time_embedding_type (`str`, *optional*, defaults to `positional`):
+        time_embedding_type (`str`, *optional*, defaults to `positional`):
             The type of position embedding to use for timesteps. Choose from `positional` or `fourier`.
-       time_embedding_dim (`int`, *optional*, defaults to `None`):
+        time_embedding_dim (`int`, *optional*, defaults to `None`):
             An optional override for the dimension of the projected time embedding.
-       time_embedding_act_fn (`str`, *optional*, defaults to `None`):
+        time_embedding_act_fn (`str`, *optional*, defaults to `None`):
             Optional activation function to use only once on the time embeddings before they are passed to the rest of
             the UNet. Choose from `silu`, `mish`, `gelu`, and `swish`.
-       timestep_post_act (`str`, *optional*, defaults to `None`):
+        timestep_post_act (`str`, *optional*, defaults to `None`):
             The second activation function to use in timestep embedding. Choose from `silu`, `mish` and `gelu`.
-       time_cond_proj_dim (`int`, *optional*, defaults to `None`):
+        time_cond_proj_dim (`int`, *optional*, defaults to `None`):
             The dimension of `cond_proj` layer in the timestep embedding.
-       conv_in_kernel (`int`, *optional*, default to `3`):
+        conv_in_kernel (`int`, *optional*, default to `3`):
             The kernel size of `conv_in` layer.
-       conv_out_kernel (`int`, *optional*, default to `3`):
+        conv_out_kernel (`int`, *optional*, default to `3`):
             The kernel size of `conv_out` layer.
-       projection_class_embeddings_input_dim (`int`, *optional*):
+        projection_class_embeddings_input_dim (`int`, *optional*):
             The dimension of the `class_labels` input when `class_embed_type="projection"`. Required when
             `class_embed_type="projection"`.
-       class_embeddings_concat (`bool`, *optional*, defaults to `False`):
+        class_embeddings_concat (`bool`, *optional*, defaults to `False`):
             Whether to concatenate the time embeddings with the class embeddings.
-       mid_block_only_cross_attention (`bool`, *optional*, defaults to `None`):
+        mid_block_only_cross_attention (`bool`, *optional*, defaults to `None`):
             Whether to use cross attention with the mid block when using the `UNetMidBlock2DSimpleCrossAttn`. If
             `only_cross_attention` is given as a single boolean and `mid_block_only_cross_attention` is `None`, the
             `only_cross_attention` value is used as the value for `mid_block_only_cross_attention`. Default to `False`
